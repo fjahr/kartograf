@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+
+import sys
+import subprocess
+import kartograf.__init__ as init
+
+if __name__ == "__main__":
+        python = f"{sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]} "
+        rpki_bin_path = subprocess.check_output(["which", "rpki-client"]).decode().strip()
+        print(f"## Version Check\n\nPython version: {python}")
+        print(f"(binary path: {sys.prefix})")
+        print(f"Kartograf version: {init.__version__}")
+        subprocess.run(["rpki-client", "-V"])
+        print(f"(binary path: {rpki_bin_path})")
+        subprocess.run(["nix", "--version"])
+        print("")
