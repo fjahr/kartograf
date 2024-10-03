@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+echo "## Versions Check ##"
+echo
+python -m unittest tests/environment_test.py

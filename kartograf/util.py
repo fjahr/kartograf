@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 import time
-
+import json
 
 def calculate_sha256(file_path):
     sha256_hash = hashlib.sha256()
@@ -51,37 +51,58 @@ def rir_from_str(maybe_rir):
     raise Exception("No RIR found in String")
 
 
-def check_compatibility():
-    exception_msg = "Could not determine rpki-client version. Is it installed?"
-
+def get_rpki_wanted_version():
+    '''Return the rpki-client version defined in the Nix environment'''
+    rpki_path = subprocess.check_output(
+        ["which", "rpki-client"]).decode().strip()
     try:
-        result = subprocess.run(['rpki-client', '-V'],
-                                capture_output=True,
-                                text=True,
-                                check=True)
+        derivation = subprocess.check_output(["nix", "derivation", "show", rpki_path])
+        derivation_env = json.loads(derivation).values()
+        rpki_version = list(derivation_env)[0].get('env').get('version')
+        return float(rpki_version)
+    except BaseException:
+        return None
 
-        # On OpenBSD the result should include 'rpki-client', everywhere else
-        # it should be 'rpki-client-portable'.
-        version_match = re.search(r'rpki-client(?:-portable)? (\d+\.\d+)',
-                                  result.stderr)
-        if version_match:
-            version = version_match.group(1)
-            version_number = float(version)
-            latest_version = 9.1
 
-            if version_number < 8.4:
-                raise Exception("Error: rpki-client version 8.4 or higher is "
-                                "required.")
-            elif version_number == latest_version:
-                print(f"Using rpki-client version {version} (recommended).")
-            elif version_number > latest_version:
-                print("Warning: This kartograf version has not been tested with "
-                      f"rpki-client versions higher than {latest_version}.")
-            else:
-                print(f"Using rpki-client version {version}. Please beware that running with the latest tested version ({latest_version}) is recommend.")
+def get_rpki_local_version():
+    '''Return the rpki-client version in the user's path'''
+    exception_msg = "Could not determine rpki-client version. Is it installed?"
+    result = subprocess.run(['rpki-client', '-V'],
+                            capture_output=True,
+                            text=True,
+                            check=True)
 
-        else:
-            raise Exception(exception_msg)
+    # On OpenBSD the result should include 'rpki-client', everywhere else
+    # it should be 'rpki-client-portable'.
+    version_match = re.search(r'rpki-client(?:-portable)? (\d+\.\d+)',
+                               result.stderr)
+    if version_match:
+        version = version_match.group(1)
+        return float(version)
+    else:
+        raise Exception(exception_msg)
+
+
+def check_compatibility():
+    try:
+       version_number = get_rpki_local_version()
+       latest_version = get_rpki_wanted_version()
+
+       if version_number < 8.4:
+           raise Exception("Error: rpki-client version 8.4 or higher is "
+                           "required.")
+       elif latest_version is None:
+           print(
+               f"The latest version is defined in the Nix environment, but Nix wasn't found. Is it installed?\n"
+               f"Current version: {version_number}")
+       elif version_number == latest_version:
+           print(f"Using rpki-client version {version} (recommended).")
+       elif version_number > latest_version:
+           print("Warning: This kartograf version has not been tested with "
+                 f"rpki-client versions higher than {latest_version}.")
+       else:
+           print(
+               f"Using rpki-client version {version}. Please beware that running with the latest tested version ({latest_version}) is recommend.")
 
     except subprocess.CalledProcessError:
         raise Exception(exception_msg)
