@@ -58,7 +58,7 @@
       # * A default/kartograf package
       # * A NixOS module
       devShell = pkgs.mkShell {
-        packages = kartografDeps;
+        packages = kartografDeps ++ [pkgs.python311Packages.autopep8];
       };
       packages = {
         kartograf = pkgs.stdenv.mkDerivation { # not a python-installable package, so just manually copy files
