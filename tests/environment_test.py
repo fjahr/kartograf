@@ -2,7 +2,6 @@ import unittest
 import sys
 import os
 import subprocess
-import json
 from kartograf.util import (get_rpki_wanted_version, get_rpki_local_version)
 from pathlib import PurePath
 from importlib.metadata import distribution
